@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { sendUserNotification } from "@/lib/email";
 import { isSameOrigin } from "@/lib/security";
 
-const submissionInput = z.object({ callId: z.string().min(8), title: z.string().trim().min(8).max(400), abstract: z.string().trim().min(80).max(16000), topic: z.string().trim().min(2).max(120), institution: z.string().trim().min(2).max(180), authors: z.array(z.object({ fullName: z.string().trim().min(2).max(120), email: z.string().trim().email().max(254), institution: z.string().trim().min(2).max(180), isCorresponding: z.boolean().default(false) })).min(1).max(20) });
+const submissionInput = z.object({ callId: z.string().min(8), title: z.string().trim().min(8).max(400), abstract: z.string().trim().min(80).max(16000), topic: z.string().trim().min(2).max(120), institution: z.string().trim().min(2).max(180), requiredDocumentIds: z.array(z.string().min(8)).max(20).default([]), authors: z.array(z.object({ fullName: z.string().trim().min(2).max(120), email: z.string().trim().email().max(254), institution: z.string().trim().min(2).max(180), isCorresponding: z.boolean().default(false) })).min(1).max(20) });
 
 export async function GET() {
   const actor = await getActor();
@@ -22,8 +22,10 @@ export async function POST(request: Request) {
   const parsed = submissionInput.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Check all required submission details.", fields: parsed.error.flatten().fieldErrors }, { status: 400 });
   const data = parsed.data;
-  const call = await prisma.researchCall.findFirst({ where: { id: data.callId, status: "OPEN", opensAt: { lte: new Date() }, closesAt: { gte: new Date() } }, select: { id: true, topics: true } });
+  const call = await prisma.researchCall.findFirst({ where: { id: data.callId, status: "OPEN", opensAt: { lte: new Date() }, closesAt: { gte: new Date() } }, select: { id: true, topics: true, requiredDocuments: { select: { id: true } } } });
   if (!call) return NextResponse.json({ error: "This call is not currently accepting submissions." }, { status: 409 });
+  const requiredIds = call.requiredDocuments.map((item) => item.id).sort();
+  if (JSON.stringify([...data.requiredDocumentIds].sort()) !== JSON.stringify(requiredIds)) return NextResponse.json({ error: "The required document checklist changed. Refresh the form and try again." }, { status: 400 });
   if (!call.topics.includes(data.topic)) return NextResponse.json({ error: "Select a topic listed in the call." }, { status: 400 });
   if (!data.authors.some((author) => author.email.toLowerCase() === actor.email?.toLowerCase())) return NextResponse.json({ error: "Add your account email as an author so the submission remains linked to your account." }, { status: 400 });
   const referenceNumber = `JJU-${new Date().getFullYear()}-${randomBytes(8).toString("hex").toUpperCase()}`;

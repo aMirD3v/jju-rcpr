@@ -6,7 +6,7 @@ import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { isSameOrigin } from "@/lib/security";
 
-const createAccount = z.object({ name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(254), institution: z.string().trim().min(2).max(180), role: z.enum(["ADMIN", "COORDINATOR", "REVIEWER"]) });
+const createAccount = z.object({ name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(254), institution: z.string().trim().min(2).max(180), role: z.enum(["ADMIN", "COORDINATOR", "REVIEWER"]), reviewerExpertise: z.preprocess((value) => typeof value === "string" ? value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean) : value, z.array(z.string().trim().min(2).max(80)).max(30).default([])), maxActiveAssignments: z.preprocess((value) => value === "" || value === null ? null : value, z.coerce.number().int().min(1).max(100).nullable().default(null)) });
 const roles = ["ADMIN", "COORDINATOR", "REVIEWER", "RESEARCHER"] as const;
 
 export async function GET(request: Request) {
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const where = { ...(rawRole ? { role: rawRole as (typeof roles)[number] } : {}), ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { email: { contains: q, mode: "insensitive" as const } }, { institution: { contains: q, mode: "insensitive" as const } }] } : {}) };
   const [total, items] = await Promise.all([
     prisma.user.count({ where }),
-    prisma.user.findMany({ where, select: { id: true, name: true, email: true, role: true, institution: true, isActive: true, emailVerifiedAt: true, createdAt: true }, orderBy: [{ role: "asc" }, { name: "asc" }], skip: (page - 1) * 20, take: 20 }),
+    prisma.user.findMany({ where, select: { id: true, name: true, email: true, role: true, institution: true, reviewerExpertise: true, maxActiveAssignments: true, isActive: true, emailVerifiedAt: true, createdAt: true }, orderBy: [{ role: "asc" }, { name: "asc" }], skip: (page - 1) * 20, take: 20 }),
   ]);
   return NextResponse.json({ items, total, page, pageSize: 20 }, { headers: { "Cache-Control": "no-store" } });
 }
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   const passwordHash = await hashPassword(temporaryPassword);
   try {
     const account = await prisma.$transaction(async (tx) => {
-      const created = await tx.user.create({ data: { ...parsed.data, email, role: parsed.data.role, emailVerifiedAt: new Date(), passwordHash, passwordResetRequired: true }, select: { id: true, name: true, email: true, role: true, institution: true, isActive: true, emailVerifiedAt: true, createdAt: true } });
+      const created = await tx.user.create({ data: { ...parsed.data, reviewerExpertise: parsed.data.role === "REVIEWER" ? parsed.data.reviewerExpertise : [], maxActiveAssignments: parsed.data.role === "REVIEWER" ? parsed.data.maxActiveAssignments : null, email, role: parsed.data.role, emailVerifiedAt: new Date(), passwordHash, passwordResetRequired: true }, select: { id: true, name: true, email: true, role: true, institution: true, reviewerExpertise: true, maxActiveAssignments: true, isActive: true, emailVerifiedAt: true, createdAt: true } });
       await tx.auditLog.create({ data: { actorId: actor.id, action: "ADMIN_ACCOUNT_CREATED", resourceType: "User", resourceId: created.id, detail: { role: created.role } } });
       return created;
     });

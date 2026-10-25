@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { SessionActor } from "@/lib/auth";
 import { AccountControls } from "@/components/auth/account-controls";
 import { NotificationBell } from "@/components/site/notification-bell";
@@ -19,19 +20,44 @@ export function Header({ actor }: { actor: SessionActor | null }) {
   return (
     <header className="site-header">
       <div className="shell nav-wrap">
-        <Link href="/" className="brand" aria-label="JJU Research Call and Peer Review home">
-          <span className="brand-mark" aria-hidden="true">JJU</span>
-          <span className="brand-name"><strong className="brand-name-full">Jigjiga University</strong><strong className="brand-name-compact">JJU-RCPR</strong><small>Research Call &amp; Peer Review</small></span>
+        <Link
+          href="/"
+          className="brand"
+          aria-label="JJU Research Call and Peer Review home"
+        >
+          <Image
+            src="/logo.png"
+            alt="Jigjiga University logo"
+            width={273}
+            height={349}
+            className="brand-logo"
+            priority
+          />
+          <span className="brand-name">
+            <strong className="brand-name-full">Jigjiga University</strong>
+            <strong className="brand-name-compact">JJU-RCPR</strong>
+            <small>Research Call &amp; Peer Review</small>
+          </span>
         </Link>
         {actor ? (
           <div className="header-actions">
             {!actor.passwordResetRequired && <NotificationBell />}
-            <AccountControls href={dashboard?.[1] ?? "/"} label={dashboard?.[0] ?? "Workspace"} />
+            <AccountControls
+              href={dashboard?.[1] ?? "/"}
+              label={dashboard?.[0] ?? "Workspace"}
+            />
           </div>
         ) : (
           <div className="header-actions">
-            <Link href="/sign-in" className="header-signin">Sign in</Link>
-            <Link href="/register" className="button button-primary header-register">Create account</Link>
+            <Link href="/sign-in" className="header-signin">
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="button button-primary header-register"
+            >
+              Create account
+            </Link>
           </div>
         )}
       </div>

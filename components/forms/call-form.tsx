@@ -3,7 +3,7 @@
 import { FormEvent, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-type CallRecord = { id: string; title: string; description: string; topics: string[]; requirements: string; acceptedFileTypes: string[]; opensAt: string | Date; closesAt: string | Date; status: string; criteria: { label: string; description?: string | null }[] };
+type CallRecord = { id: string; title: string; description: string; topics: string[]; requirements: string; requiredDocuments: { id: string; label: string }[]; acceptedFileTypes: string[]; opensAt: string | Date; closesAt: string | Date; status: string; criteria: { label: string; description?: string | null }[] };
 const formats = [
   ["application/pdf", "PDF"],
   ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Word (.docx)"],
@@ -28,6 +28,7 @@ export function CallForm({ onCreated, initialCall }: { onCreated: () => void; in
     const payload = {
       title: form.get("title"), description: form.get("description"), topics: String(form.get("topics")).split("\n").map((x) => x.trim()).filter(Boolean),
       requirements: form.get("requirements"), acceptedFileTypes: form.getAll("acceptedFileTypes").filter((value): value is string => typeof value === "string"),
+      requiredDocuments: String(form.get("requiredDocuments") ?? "").split("\n").map((label) => label.trim()).filter(Boolean),
       opensAt: new Date(String(form.get("opensAt"))).toISOString(), closesAt: new Date(String(form.get("closesAt"))).toISOString(),
       status: initialCall ? form.get("status") : form.get("publish") === "on" ? "OPEN" : "DRAFT",
       criteria: String(form.get("criteria")).split("\n").map((label) => ({ label: label.trim() })).filter((item) => item.label),
@@ -40,10 +41,11 @@ export function CallForm({ onCreated, initialCall }: { onCreated: () => void; in
     <div className="form-grid"><label>Call title<input name="title" minLength={8} maxLength={240} required defaultValue={initialCall?.title} /></label><label>Topics <small>One topic per line</small><textarea name="topics" rows={3} required defaultValue={initialCall?.topics.join("\n")} /></label></div>
     <label>Call description<textarea name="description" rows={4} required minLength={20} defaultValue={initialCall?.description} /></label>
     <label>Submission requirements<textarea name="requirements" rows={4} required minLength={10} defaultValue={initialCall?.requirements} /></label>
+    <label>Required documents <small>One required document per line, up to five files per version. Researchers must upload each item before screening can approve the submission.</small><textarea name="requiredDocuments" rows={3} maxLength={1000} defaultValue={initialCall?.requiredDocuments.map((item) => item.label).join("\n")} placeholder="For example: Full research proposal\nEthics approval letter" /></label>
     <label>Review criteria <small>One criterion per line</small><textarea name="criteria" rows={3} defaultValue={initialCall?.criteria.map((criterion) => criterion.label).join("\n")} /></label>
     <fieldset className="format-options"><legend>Accepted document formats</legend>{formats.map(([value, label]) => <label key={value}><input type="checkbox" name="acceptedFileTypes" value={value} defaultChecked={initialCall ? initialCall.acceptedFileTypes.includes(value) : value !== "application/msword"} />{label}</label>)}</fieldset>
     <div className="form-grid"><label>Opens<input name="opensAt" type="datetime-local" required defaultValue={localDateTime(initialCall?.opensAt)} /></label><label>Closes<input name="closesAt" type="datetime-local" required defaultValue={localDateTime(initialCall?.closesAt)} /></label></div>
-    {initialCall ? <label>Call state<select name="status" defaultValue={initialCall.status}><option value="DRAFT">Draft</option><option value="OPEN">Published / open</option><option value="CLOSED">Closed</option><option value="ARCHIVED">Archived</option></select></label> : <label className="check-label"><input type="checkbox" name="publish" /> Publish immediately when the window is open</label>}
+    {initialCall ? <label>Call state<select name="status" defaultValue={initialCall.status}><option value="DRAFT">Draft</option><option value="OPEN">Published (visible now or on opening date)</option><option value="CLOSED">Closed</option><option value="ARCHIVED">Archived</option></select><small>Published calls accept submissions only between their opening and closing dates.</small></label> : <label className="check-label"><input type="checkbox" name="publish" /> Publish this call (it will appear as upcoming until opening)</label>}
     {message && <p role="status" className="form-message">{message}</p>}<button className="button button-primary" disabled={busy}>{busy ? "Saving…" : initialCall ? "Save call changes" : "Save research call"}</button>
     <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent className="confirm-dialog"><DialogHeader><p className="eyebrow">Call status change</p><DialogTitle>{confirmingStatus === "ARCHIVED" ? "Archive this research call?" : "Close this research call?"}</DialogTitle><DialogDescription>{confirmingStatus === "ARCHIVED" ? "The call will be removed from active call management. Its submissions and history will remain available to the coordinator." : "The call will stop accepting new submissions. Existing submission records and review work will remain available."}</DialogDescription></DialogHeader><DialogFooter><button type="button" className="button button-ghost" onClick={() => setConfirming(false)}>Cancel</button><button type="button" className="button button-primary" onClick={() => { setConfirmed(true); setConfirming(false); setTimeout(() => formRef.current?.requestSubmit(), 0); }}>Confirm status change</button></DialogFooter></DialogContent></Dialog>
   </form>;

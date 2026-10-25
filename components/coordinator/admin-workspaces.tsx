@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { CallForm } from "@/components/forms/call-form";
 
-type Call = { id: string; title: string; description: string; topics: string[]; requirements: string; acceptedFileTypes: string[]; status: string; opensAt: string | Date; closesAt: string | Date; criteria: { label: string; description: string | null }[]; _count: { submissions: number } };
+type Call = { id: string; title: string; description: string; topics: string[]; requirements: string; acceptedFileTypes: string[]; requiredDocuments: { id: string; label: string; description: string | null }[]; status: string; opensAt: string | Date; closesAt: string | Date; criteria: { label: string; description: string | null }[]; _count: { submissions: number } };
 
 export function CoordinatorCallsWorkspace({ calls }: { calls: Call[] }) {
   const router = useRouter();

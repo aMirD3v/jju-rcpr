@@ -3,14 +3,14 @@
 import { FormEvent, useState } from "react";
 import { getSession, signIn } from "next-auth/react";
 
-export function SignInForm({ callbackUrl = "" }: { callbackUrl?: string }) {
+export function SignInForm({ callbackUrl = "", ssoEnabled = false }: { callbackUrl?: string; ssoEnabled?: boolean }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError("");
     const form = new FormData(event.currentTarget);
     try {
-      const result = await signIn("credentials", { email: form.get("email"), password: form.get("password"), redirect: false });
+      const result = await signIn("credentials", { email: form.get("email"), password: form.get("password"), totpCode: form.get("totpCode"), redirect: false });
       if (result?.error) {
         setError("Email and password did not match an active, verified account.");
       } else {
@@ -40,5 +40,5 @@ export function SignInForm({ callbackUrl = "" }: { callbackUrl?: string }) {
     } catch { setError("Unable to contact the sign-in service. Please try again."); }
     finally { setBusy(false); }
   }
-  return <form className="auth-form" onSubmit={submit}><label>Email address<input autoComplete="email" name="email" type="email" required /></label><label>Password<input autoComplete="current-password" name="password" type="password" required /></label>{error && <p className="form-error" role="alert">{error}</p>}<button className="button button-primary" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button></form>;
+  return <><form className="auth-form" onSubmit={submit}><label>Email address<input autoComplete="email" name="email" type="email" required /></label><label>Password<input autoComplete="current-password" name="password" type="password" required /></label><label>Authenticator or recovery code <span className="muted-copy">Required only when MFA is enabled</span><input autoComplete="one-time-code" name="totpCode" inputMode="numeric" /></label>{error && <p className="form-error" role="alert">{error}</p>}<button className="button button-primary" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button></form>{ssoEnabled && <div className="sso-signin"><span>or</span><button className="button button-secondary" type="button" onClick={() => void signIn("institutional", { callbackUrl: callbackUrl || undefined })}>Sign in with {process.env.NEXT_PUBLIC_SSO_PROVIDER_NAME || "university account"}</button></div>}</>;
 }

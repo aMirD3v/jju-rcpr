@@ -20,5 +20,8 @@ export const coordinatorQueueInclude = {
 } satisfies Prisma.ResearchSubmissionInclude;
 
 export async function getCoordinatorReviewers() {
-  return prisma.user.findMany({ where: { role: "REVIEWER" }, select: { id: true, name: true, email: true, institution: true }, orderBy: { name: "asc" } });
+  const reviewers = await prisma.user.findMany({ where: { role: "REVIEWER", isActive: true, emailVerifiedAt: { not: null } }, select: { id: true, name: true, email: true, institution: true, reviewerExpertise: true, maxActiveAssignments: true }, orderBy: { name: "asc" } });
+  const workloads = await prisma.reviewerAssignment.groupBy({ by: ["reviewerId"], where: { reviewerId: { in: reviewers.map((reviewer) => reviewer.id) }, supersededAt: null, status: { in: ["PENDING", "ACCEPTED"] } }, _count: { _all: true } });
+  const counts = new Map(workloads.map((item) => [item.reviewerId, item._count._all]));
+  return reviewers.map((reviewer) => ({ ...reviewer, activeAssignments: counts.get(reviewer.id) ?? 0 }));
 }

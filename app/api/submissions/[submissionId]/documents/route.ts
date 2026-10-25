@@ -5,6 +5,7 @@ import { getActor } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getDocumentBucket, getStorageClient } from "@/lib/storage";
 import { isSameOrigin } from "@/lib/security";
+import { scanUpload } from "@/lib/malware-scan";
 
 const MAX_SIZE = 20 * 1024 * 1024;
 const MAX_FILES_PER_VERSION = 5;
@@ -19,15 +20,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
   const { submissionId } = await params;
   const contentLength = Number(request.headers.get("content-length") ?? 0);
   if (contentLength > MAX_SIZE + 1024 * 1024) return NextResponse.json({ error: "The upload request is too large." }, { status: 413 });
-  const submission = await prisma.researchSubmission.findFirst({ where: { id: submissionId, researcherId: actor.id }, include: { call: { select: { acceptedFileTypes: true } } } });
+  const submission = await prisma.researchSubmission.findFirst({ where: { id: submissionId, researcherId: actor.id }, include: { call: { select: { acceptedFileTypes: true, requiredDocuments: { select: { id: true, label: true } } } } } });
   if (!submission || submission.status !== "SUBMITTED") return NextResponse.json({ error: "Documents can only be added to an active submitted version." }, { status: 409 });
   const formData = await request.formData();
   const file = formData.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "Choose a document to upload." }, { status: 400 });
+  const rawRequirementId = formData.get("requirementId");
+  const requirementId = typeof rawRequirementId === "string" && rawRequirementId ? rawRequirementId : null;
+  if (requirementId && !submission.call.requiredDocuments.some((requirement) => requirement.id === requirementId)) return NextResponse.json({ error: "This document is not part of the call's required checklist." }, { status: 400 });
   if (file.size < 1 || file.size > MAX_SIZE) return NextResponse.json({ error: "Documents must be smaller than 20 MB." }, { status: 413 });
   const latestVersion = await prisma.submissionVersion.findUnique({ where: { submissionId_round: { submissionId, round: submission.currentRound } } });
   if (!latestVersion) return NextResponse.json({ error: "The current submission version is unavailable." }, { status: 409 });
   const existingFiles = await prisma.submissionDocument.findMany({ where: { versionId: latestVersion.id }, select: { byteSize: true } });
+  if (requirementId && await prisma.submissionDocument.findFirst({ where: { versionId: latestVersion.id, requirementId }, select: { id: true } })) return NextResponse.json({ error: "A file is already attached to this required document for this version." }, { status: 409 });
   if (existingFiles.length >= MAX_FILES_PER_VERSION || existingFiles.reduce((sum, item) => sum + item.byteSize, 0) + file.size > MAX_VERSION_BYTES) return NextResponse.json({ error: "Each version can include up to five documents and 50 MB total." }, { status: 413 });
   const extension = file.name.split(".").pop()?.toLowerCase();
   const expected = extension === "pdf" ? "application/pdf" : extension === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : extension === "doc" ? "application/msword" : "";
@@ -38,6 +43,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
   const originalName = file.name.split(/[\\/]/).pop()?.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 240);
   if (!originalName) return NextResponse.json({ error: "The file name is invalid." }, { status: 400 });
   const checksum = createHash("sha256").update(buffer).digest("hex");
+  try { await scanUpload(buffer); }
+  catch (error) {
+    if (error instanceof Error && error.message === "MALWARE_DETECTED") return NextResponse.json({ error: "The uploaded document did not pass the malware security scan." }, { status: 422 });
+    console.error("Document malware scan unavailable", error instanceof Error ? error.message : "unknown");
+    return NextResponse.json({ error: "Document security scanning is unavailable. Please try again later." }, { status: 503 });
+  }
   let stored = false;
   try {
     await getStorageClient().send(new PutObjectCommand({ Bucket: getDocumentBucket(), Key: objectKey, Body: buffer, ContentType: expected, Metadata: { sha256: checksum } }));
@@ -47,7 +58,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
       if (!currentSubmission) throw new Error("UPLOAD_CLOSED");
       const currentFiles = await tx.submissionDocument.findMany({ where: { versionId: latestVersion.id }, select: { byteSize: true } });
       if (currentFiles.length >= MAX_FILES_PER_VERSION || currentFiles.reduce((sum, item) => sum + item.byteSize, 0) + buffer.length > MAX_VERSION_BYTES) throw new Error("UPLOAD_LIMIT");
-      const saved = await tx.submissionDocument.create({ data: { submissionId, versionId: latestVersion.id, originalName, objectKey, mimeType: expected, byteSize: buffer.length, checksum } });
+      if (requirementId && await tx.submissionDocument.findFirst({ where: { versionId: latestVersion.id, requirementId }, select: { id: true } })) throw new Error("REQUIREMENT_ALREADY_FILLED");
+      const saved = await tx.submissionDocument.create({ data: { submissionId, versionId: latestVersion.id, requirementId, originalName, objectKey, mimeType: expected, byteSize: buffer.length, checksum } });
       await tx.workflowEvent.create({ data: { submissionId, actorId: actor.id, eventType: "DOCUMENT_UPLOADED", detail: { documentId: saved.id, round: submission.currentRound } } });
       await tx.auditLog.create({ data: { actorId: actor.id, action: "SUBMISSION_DOCUMENT_UPLOADED", resourceType: "SubmissionDocument", resourceId: saved.id, detail: { submissionId, byteSize: saved.byteSize, mimeType: saved.mimeType, checksum } } });
       return saved;
@@ -61,6 +73,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
     }
     if (error instanceof Error && error.message === "UPLOAD_CLOSED") return NextResponse.json({ error: "The current version has moved into review and no longer accepts documents." }, { status: 409 });
     if (error instanceof Error && error.message === "UPLOAD_LIMIT") return NextResponse.json({ error: "Each version can include up to five documents and 50 MB total." }, { status: 413 });
+    if (error instanceof Error && error.message === "REQUIREMENT_ALREADY_FILLED") return NextResponse.json({ error: "A file is already attached to this required document for this version." }, { status: 409 });
     return NextResponse.json({ error: "Document storage is unavailable. Contact the research office." }, { status: 503 });
   }
 }

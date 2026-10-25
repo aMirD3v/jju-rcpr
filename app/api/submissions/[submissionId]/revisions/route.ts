@@ -6,7 +6,7 @@ import { assertTransition } from "@/lib/domain/workflow";
 import { sendUserNotification } from "@/lib/email";
 import { isSameOrigin } from "@/lib/security";
 
-const input = z.object({ title: z.string().trim().min(8).max(400), abstract: z.string().trim().min(80).max(16000) });
+const input = z.object({ title: z.string().trim().min(8).max(400), abstract: z.string().trim().min(80).max(16000), requiredDocumentIds: z.array(z.string().cuid()).max(30).default([]) });
 export async function POST(request: Request, { params }: { params: Promise<{ submissionId: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403 });
   const actor = await getActor();
@@ -14,8 +14,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
   const { submissionId } = await params;
   const parsed = input.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Provide a valid revised title and abstract." }, { status: 400 });
-  const submission = await prisma.researchSubmission.findFirst({ where: { id: submissionId, researcherId: actor.id } });
+  const submission = await prisma.researchSubmission.findFirst({ where: { id: submissionId, researcherId: actor.id }, include: { call: { select: { requiredDocuments: { select: { id: true } } } } } });
   if (!submission || !["REVISION_REQUESTED", "RETURNED_FOR_CORRECTION"].includes(submission.status)) return NextResponse.json({ error: "This submission is not awaiting a revision." }, { status: 409 });
+  if (new Set(parsed.data.requiredDocumentIds).size !== submission.call.requiredDocuments.length || submission.call.requiredDocuments.some((item) => !parsed.data.requiredDocumentIds.includes(item.id))) return NextResponse.json({ error: "Include every required document listed for this call." }, { status: 400 });
   assertTransition(submission.status, "SUBMITTED", "RESEARCHER");
   const result = await prisma.$transaction(async (tx) => {
     const changed = await tx.researchSubmission.updateMany({ where: { id: submissionId, researcherId: actor.id, status: submission.status, currentRound: submission.currentRound }, data: { title: parsed.data.title, abstract: parsed.data.abstract, status: "SUBMITTED" } });

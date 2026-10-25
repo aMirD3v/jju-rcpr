@@ -19,6 +19,10 @@ See [docs/setup.md](docs/setup.md) for the full infrastructure and deployment st
 - Coordinator workspace with separate overview, call management, all-submissions, screening, reviewer-assignment, and final-decision pages.
 - Separate administrator area for staff and researcher accounts, access recovery, activation controls, and read-only audit review. Coordinators do not administer accounts.
 - Reviewer workspace for active assignments, conflict declaration, saved review drafts, structured scoring, and submitted recommendations.
+- Scheduled calls visible before opening, with submission actions enabled only during the call window and call-specific required document checklists.
+- Reviewer expertise and configurable active workload limits used by coordinator assignment tools and enforced on the server.
+- Coordinator CSV exports for submissions and review workload, scoped to owned calls.
+- Optional pre-provisioned staff OIDC sign-in, account TOTP MFA with one-time recovery codes, and optional fail-closed ClamAV document scanning.
 - Administrator-managed researcher identity verification and audited access recovery when a researcher cannot use their registered email.
 
 If email delivery is not configured, account verification and recovery are handled by an administrator. Administrators can verify researcher accounts and, after confirming identity under university policy, issue a one-time temporary password. The password is not emailed, is displayed once, and must be changed at first sign-in.

@@ -15,7 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
   if (!parsed.success || parsed.data.dueAt <= new Date()) return NextResponse.json({ error: "Provide a reviewer and a future deadline." }, { status: 400 });
   const submission = await prisma.researchSubmission.findFirst({ where: { id: submissionId, call: { coordinatorId: actor.id }, status: { in: ["ELIGIBLE_FOR_REVIEW", "UNDER_REVIEW"] } } });
   if (!submission) return NextResponse.json({ error: "Only eligible submissions can be assigned." }, { status: 409 });
-  const reviewer = await prisma.user.findFirst({ where: { id: parsed.data.reviewerId, role: "REVIEWER" } });
+  const reviewer = await prisma.user.findFirst({ where: { id: parsed.data.reviewerId, role: "REVIEWER", isActive: true, emailVerifiedAt: { not: null } } });
   if (!reviewer) return NextResponse.json({ error: "Reviewer account not found." }, { status: 404 });
   if (reviewer.id === submission.researcherId) return NextResponse.json({ error: "A researcher cannot review their own submission." }, { status: 400 });
   if (parsed.data.replaceAssignmentId && !parsed.data.reassignmentReason) return NextResponse.json({ error: "Provide a reason to preserve the reassignment history." }, { status: 400 });
@@ -32,6 +32,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
     if (currentReplacement?.status === "COMPLETED") throw new Error("ASSIGNMENT_COMPLETED");
     const duplicate = await tx.reviewerAssignment.findFirst({ where: { submissionId, reviewerId: reviewer.id, supersededAt: null, ...(currentReplacement ? { id: { not: currentReplacement.id } } : {}) }, select: { id: true } });
     if (duplicate) throw new Error("DUPLICATE_ASSIGNMENT");
+    const workload = await tx.reviewerAssignment.count({ where: { reviewerId: reviewer.id, supersededAt: null, status: { in: ["PENDING", "ACCEPTED"] }, ...(currentReplacement?.reviewerId === reviewer.id ? { id: { not: currentReplacement.id } } : {}) } });
+    if (reviewer.maxActiveAssignments !== null && workload >= reviewer.maxActiveAssignments) throw new Error("REVIEWER_AT_CAPACITY");
     await tx.reviewerAssignment.updateMany({ where: { submissionId, supersededAt: null, status: { in: ["CONFLICT_DECLARED", "DECLINED"] } }, data: { supersededAt: new Date() } });
     if (currentReplacement) await tx.reviewerAssignment.update({ where: { id: currentReplacement.id }, data: { supersededAt: new Date() } });
     const assignment = await tx.reviewerAssignment.create({ data: { submissionId, reviewerId: reviewer.id, assignedById: actor.id, dueAt: parsed.data.dueAt } });
@@ -43,8 +45,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
     return assignment;
   }, { isolationLevel: "Serializable" }).catch((error: unknown) => {
     if (error instanceof Error && ["SUBMISSION_CHANGED", "ASSIGNMENT_CHANGED", "ASSIGNMENT_COMPLETED", "DUPLICATE_ASSIGNMENT"].includes(error.message)) return null;
+    if (error instanceof Error && error.message === "REVIEWER_AT_CAPACITY") return "REVIEWER_AT_CAPACITY" as const;
     throw error;
   });
+  if (result === "REVIEWER_AT_CAPACITY") return NextResponse.json({ error: "This reviewer has reached their active assignment limit. Choose another reviewer or update their approved capacity." }, { status: 409 });
   if (!result) return NextResponse.json({ error: "The assignment changed while this request was being processed. Refresh the workspace and try again." }, { status: 409 });
   await sendUserNotification(reviewer.id, "Review assignment", "A research submission has been assigned to you. Please respond by " + parsed.data.dueAt.toLocaleDateString() + ".", "/reviewer");
   return NextResponse.json(result, { status: 201 });

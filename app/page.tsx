@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 
 export const metadata = {
-  title: "Calls for Papers",
+  title: "Research Call and Peer Review | Jigjiga University",
   description:
     "Browse active Jigjiga University calls for papers, review submission requirements, and submit your research.",
 };
@@ -13,10 +13,9 @@ export const metadata = {
 export default async function HomePage() {
   await connection();
   const now = new Date();
-  const calls = await prisma.researchCall.findMany({
+  const publishedCalls = await prisma.researchCall.findMany({
     where: {
       status: "OPEN",
-      opensAt: { lte: now },
       closesAt: { gte: now },
     },
     select: {
@@ -25,16 +24,26 @@ export default async function HomePage() {
       description: true,
       topics: true,
       requirements: true,
+      opensAt: true,
       closesAt: true,
     },
     orderBy: { closesAt: "asc" },
+  });
+  const openCalls = publishedCalls.filter((call) => call.opensAt <= now);
+  const upcomingCalls = publishedCalls.filter((call) => call.opensAt > now);
+  const toExplorerCall = (call: (typeof publishedCalls)[number]) => ({
+    ...call,
+    opensAt: call.opensAt.toISOString(),
+    closesAt: call.closesAt.toISOString(),
   });
 
   return (
     <main className="shell content-page calls-page">
       <section className="calls-heading" aria-labelledby="page-title">
         <div>
-          <p className="eyebrow">Jigjiga University · Research Call & Peer Review</p>
+          <p className="eyebrow">
+            Jigjiga University · Research Call & Peer Review
+          </p>
           <h1 id="page-title">Calls for Papers</h1>
           <p>
             Official research opportunities from Jigjiga University. Find a call
@@ -53,26 +62,49 @@ export default async function HomePage() {
         <aside className="submission-guide" aria-label="How to submit">
           <p className="submission-guide-title">From call to submission</p>
           <ol>
-            <li><span>01</span><div><strong>Choose a call</strong><small>Check its topics and eligibility.</small></div></li>
-            <li><span>02</span><div><strong>Prepare your materials</strong><small>Follow the listed format and requirements.</small></div></li>
-            <li><span>03</span><div><strong>Submit before closing</strong><small>Sign in to submit and keep your reference.</small></div></li>
+            <li>
+              <span>01</span>
+              <div>
+                <strong>Choose a call</strong>
+                <small>Check its topics and eligibility.</small>
+              </div>
+            </li>
+            <li>
+              <span>02</span>
+              <div>
+                <strong>Prepare your materials</strong>
+                <small>Follow the listed format and requirements.</small>
+              </div>
+            </li>
+            <li>
+              <span>03</span>
+              <div>
+                <strong>Submit before closing</strong>
+                <small>Sign in to submit and keep your reference.</small>
+              </div>
+            </li>
           </ol>
         </aside>
       </section>
 
-      <section className="calls-section" id="open-calls" aria-labelledby="open-calls-heading">
+      <section
+        className="calls-section"
+        id="open-calls"
+        aria-labelledby="open-calls-heading"
+      >
         <div className="calls-section-heading">
           <div>
             <p className="eyebrow">Currently accepting submissions</p>
             <h2 id="open-calls-heading">Open calls</h2>
           </div>
           <span className="calls-count" aria-live="polite">
-            {calls.length} {calls.length === 1 ? "open call" : "open calls"}
+            {openCalls.length}{" "}
+            {openCalls.length === 1 ? "open call" : "open calls"}
           </span>
         </div>
 
-        {calls.length ? (
-          <CallExplorer calls={calls.map((call) => ({ ...call, closesAt: call.closesAt.toISOString() }))} />
+        {openCalls.length ? (
+          <CallExplorer calls={openCalls.map(toExplorerCall)} />
         ) : (
           <Card className="empty-state calls-empty-state">
             <p className="eyebrow">No open calls</p>
@@ -89,7 +121,29 @@ export default async function HomePage() {
         )}
       </section>
 
-      {calls.length > 0 && (
+      {upcomingCalls.length > 0 && (
+        <section
+          className="calls-section upcoming-calls-section"
+          aria-labelledby="upcoming-calls-heading"
+        >
+          <div className="calls-section-heading">
+            <div>
+              <p className="eyebrow">Published and scheduled</p>
+              <h2 id="upcoming-calls-heading">Opening soon</h2>
+            </div>
+            <span className="calls-count">{upcomingCalls.length} upcoming</span>
+          </div>
+          <p className="upcoming-calls-intro">
+            Review the call details now. Submission opens on the date shown.
+          </p>
+          <CallExplorer
+            calls={upcomingCalls.map(toExplorerCall)}
+            phase="upcoming"
+          />
+        </section>
+      )}
+
+      {publishedCalls.length > 0 && (
         <p className="calls-footer-note">
           Call details include the submission requirements, accepted file types,
           and review criteria. <span>Read them before you begin.</span>

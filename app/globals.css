@@ -94,18 +94,12 @@ textarea {
   min-width: 210px;
   flex: 0 0 auto;
 }
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  color: #fff;
-  background: #2563eb;
-  border-radius: 8px;
-  font:
-    700 11px Georgia,
-    serif;
-  letter-spacing: 0.04em;
+.brand-logo {
+  display: block;
+  width: auto;
+  height: 38px;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 .brand strong {
   display: block;
@@ -1361,7 +1355,7 @@ fieldset:disabled {
   }
   .nav-wrap { min-height: 64px; gap: 8px; }
   .brand { min-width: 0; gap: 8px; }
-  .brand-mark { width: 32px; height: 32px; }
+  .brand-logo { height: 34px; }
   .brand-name strong { font-size: 12px; letter-spacing: .02em; }
   .brand-name-full { display: none !important; }
   .brand-name-compact { display: block !important; }
@@ -1448,3 +1442,18 @@ fieldset:disabled {
     gap: 18px;
   }
 }
+
+/* Call schedule, document checklist, exports and account security additions. */
+.upcoming-calls-intro { margin: 34px 0 14px; padding-top: 24px; border-top: 1px solid var(--line); }
+.call-not-yet-open { margin-top: 8px; color: var(--muted); font-size: .9rem; }
+.required-document-fields { display: grid; gap: 14px; min-width: 0; margin: 8px 0; padding: 18px; border: 1px solid var(--line); border-radius: 8px; }
+.required-document-fields legend { padding: 0 7px; font-weight: 600; }
+.required-document-fields label { display: grid; gap: 6px; }
+.required-document-fields small { display: block; color: var(--muted); }
+.recovery-codes { margin: 18px 0; padding: 16px; background: var(--surface-muted, #f4f3ef); border: 1px solid var(--line); border-radius: 8px; }
+.recovery-codes pre { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 20px; white-space: pre-wrap; font: 600 .95rem/1.5 ui-monospace, monospace; }
+.sso-signin { display: grid; justify-items: center; gap: 12px; margin-top: 18px; }
+.sso-signin > span { color: var(--muted); font-size: .85rem; }
+.reviewer-profile-form { display: grid; grid-template-columns: 1fr 190px auto; align-items: end; gap: 12px; padding: 14px 0; }
+.reviewer-profile-form label { display: grid; gap: 6px; }
+@media (max-width: 760px) { .reviewer-profile-form { grid-template-columns: 1fr; } }

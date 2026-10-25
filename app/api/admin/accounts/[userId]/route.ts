@@ -4,7 +4,7 @@ import { getActor } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isSameOrigin } from "@/lib/security";
 
-const input = z.discriminatedUnion("action", [z.object({ action: z.literal("VERIFY_RESEARCHER") }), z.object({ action: z.literal("ACTIVATE") }), z.object({ action: z.literal("DEACTIVATE"), reason: z.string().trim().min(10).max(1000) })]);
+const input = z.discriminatedUnion("action", [z.object({ action: z.literal("VERIFY_RESEARCHER") }), z.object({ action: z.literal("ACTIVATE") }), z.object({ action: z.literal("DEACTIVATE"), reason: z.string().trim().min(10).max(1000) }), z.object({ action: z.literal("UPDATE_REVIEWER_PROFILE"), reviewerExpertise: z.array(z.string().trim().min(2).max(80)).max(30), maxActiveAssignments: z.number().int().min(1).max(100).nullable() })]);
 type Context = { params: Promise<{ userId: string }> };
 
 export async function PATCH(request: Request, { params }: Context) {
@@ -16,6 +16,18 @@ export async function PATCH(request: Request, { params }: Context) {
   const { userId } = await params;
   const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, isActive: true, emailVerifiedAt: true } });
   if (!target) return NextResponse.json({ error: "Account not found." }, { status: 404 });
+  if (parsed.data.action === "UPDATE_REVIEWER_PROFILE") {
+    const profile = parsed.data;
+    if (target.role !== "REVIEWER") return NextResponse.json({ error: "Only reviewer accounts have reviewer profiles." }, { status: 409 });
+    const expertise = [...new Set(parsed.data.reviewerExpertise.map((item) => item.trim()).filter(Boolean))];
+    const account = await prisma.$transaction(async (tx) => {
+      const changed = await tx.user.updateMany({ where: { id: target.id, role: "REVIEWER" }, data: { reviewerExpertise: expertise, maxActiveAssignments: profile.maxActiveAssignments } });
+      if (changed.count !== 1) return false;
+      await tx.auditLog.create({ data: { actorId: actor.id, action: "REVIEWER_PROFILE_UPDATED", resourceType: "User", resourceId: target.id, detail: { reviewerExpertise: expertise, maxActiveAssignments: profile.maxActiveAssignments } } });
+      return true;
+    });
+    return account ? NextResponse.json({ updated: true }) : NextResponse.json({ error: "Reviewer profile could not be updated." }, { status: 409 });
+  }
   if (parsed.data.action === "VERIFY_RESEARCHER" && (target.role !== "RESEARCHER" || target.emailVerifiedAt)) return NextResponse.json({ error: "Only a pending researcher account can be verified." }, { status: 409 });
   if (parsed.data.action === "ACTIVATE" && target.isActive) return NextResponse.json({ error: "This account is already active." }, { status: 409 });
   if (parsed.data.action === "DEACTIVATE") {

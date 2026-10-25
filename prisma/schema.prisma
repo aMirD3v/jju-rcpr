@@ -70,6 +70,10 @@ model User {
   failedLoginAttempts      Int                  @default(0)
   lockoutUntil             DateTime?
   institution              String?
+  reviewerExpertise        String[]             @default([])
+  maxActiveAssignments     Int?
+  mfaEnabled               Boolean              @default(false)
+  mfaSecretEncrypted       String?
   reviewerAssignments      ReviewerAssignment[] @relation("ReviewerAssignments")
   coordinatedCalls         ResearchCall[]       @relation("CallCoordinator")
   submissions              ResearchSubmission[] @relation("ResearcherSubmissions")
@@ -77,6 +81,7 @@ model User {
   notifications            Notification[]
   events                   WorkflowEvent[]
   auditLogs                AuditLog[]
+  mfaRecoveryCodes         MfaRecoveryCode[]
   createdAt                DateTime             @default(now())
   updatedAt                DateTime             @updatedAt
 
@@ -85,7 +90,7 @@ model User {
 }
 
 model ResearchCall {
-  id                String               @id @default(cuid())
+  id                String                    @id @default(cuid())
   title             String
   description       String
   topics            String[]
@@ -93,15 +98,30 @@ model ResearchCall {
   acceptedFileTypes String[]
   opensAt           DateTime
   closesAt          DateTime
-  status            CallStatus           @default(DRAFT)
+  status            CallStatus                @default(DRAFT)
   coordinatorId     String
-  coordinator       User                 @relation("CallCoordinator", fields: [coordinatorId], references: [id])
+  coordinator       User                      @relation("CallCoordinator", fields: [coordinatorId], references: [id])
   criteria          ReviewCriterion[]
+  requiredDocuments CallDocumentRequirement[]
   submissions       ResearchSubmission[]
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
 
   @@index([status, opensAt, closesAt])
+}
+
+model CallDocumentRequirement {
+  id          String               @id @default(cuid())
+  callId      String
+  call        ResearchCall         @relation(fields: [callId], references: [id], onDelete: Cascade)
+  label       String
+  description String?
+  position    Int
+  documents   SubmissionDocument[]
+  createdAt   DateTime             @default(now())
+
+  @@unique([callId, position])
+  @@index([callId])
 }
 
 model ReviewCriterion {
@@ -169,19 +189,32 @@ model SubmissionVersion {
 }
 
 model SubmissionDocument {
-  id           String             @id @default(cuid())
-  submissionId String
-  submission   ResearchSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  versionId    String?
-  version      SubmissionVersion? @relation(fields: [versionId], references: [id])
-  originalName String
-  objectKey    String             @unique
-  mimeType     String
-  byteSize     Int
-  checksum     String
-  createdAt    DateTime           @default(now())
+  id            String                   @id @default(cuid())
+  submissionId  String
+  submission    ResearchSubmission       @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  versionId     String?
+  version       SubmissionVersion?       @relation(fields: [versionId], references: [id])
+  requirementId String?
+  requirement   CallDocumentRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  originalName  String
+  objectKey     String                   @unique
+  mimeType      String
+  byteSize      Int
+  checksum      String
+  createdAt     DateTime                 @default(now())
 
   @@index([submissionId])
+}
+
+model MfaRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
 }
 
 model ReviewerAssignment {
