@@ -1,0 +1,10 @@
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+type SubmissionCard = { id: string; title: string; referenceNumber: string; currentRound: number; topic: string; status: string; updatedAt: string | Date; call: { title: string }; decisions: { feedback: string; status: string; createdAt: string | Date }[] };
+const labels: Record<string, string> = { SUBMITTED: "Submitted", RETURNED_FOR_CORRECTION: "Correction requested", SCREENING_DECLINED: "Declined at screening", ELIGIBLE_FOR_REVIEW: "Eligible for review", UNDER_REVIEW: "Under review", REVISION_REQUESTED: "Revision requested", ACCEPTED: "Accepted", REJECTED: "Rejected" };
+
+export function SubmissionCards({ submissions }: { submissions: SubmissionCard[] }) {
+  return <div className="submission-list">{submissions.map((submission) => <Card className="submission-card" key={submission.id}><div className="submission-card-head"><div><p className="eyebrow">{submission.referenceNumber} · Round {submission.currentRound}</p><h2>{submission.title}</h2><p>{submission.call.title} · {submission.topic}</p></div><Badge tone={submission.status === "ACCEPTED" ? "green" : submission.status === "REJECTED" || submission.status === "SCREENING_DECLINED" ? "red" : submission.status.includes("REVISION") || submission.status.includes("CORRECTION") ? "amber" : "blue"}>{labels[submission.status] ?? submission.status.replaceAll("_", " ")}</Badge></div>{submission.decisions[0] && <div className="decision-feedback"><strong>Latest decision feedback</strong><p>{submission.decisions[0].feedback}</p></div>}<div className="submission-card-foot"><span>Updated {new Date(submission.updatedAt).toLocaleDateString()}</span><Link className="text-link" href={`/portal/submissions/${submission.id}`}>View submission record →</Link></div></Card>)}{submissions.length === 0 && <Card className="empty-state"><p className="eyebrow">No submissions</p><h2>Your research record starts here.</h2><p>Browse open calls and submit a research proposal when you are ready.</p><Link href="/" className="button button-primary">Browse calls</Link></Card>}</div>;
+}

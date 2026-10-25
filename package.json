@@ -6,20 +6,43 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "provision:admin": "node scripts/provision-admin.mjs"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.3",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/s3-request-presigner": "^3.1156.0",
+    "@prisma/client": "^7.10.1",
+    "@radix-ui/react-slot": "^1.5.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.61.0",
     "next": "16.4.3",
+    "next-auth": "^4.24.15",
+    "next-themes": "^0.4.6",
+    "pg": "^8.16.3",
+    "radix-ui": "^1.8.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.15.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "prisma": "^7.10.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

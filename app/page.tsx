@@ -1,69 +1,100 @@
-import Image from "next/image";
+import Link from "next/link";
+import { connection } from "next/server";
+import { CallExplorer } from "@/components/calls/call-explorer";
+import { Card } from "@/components/ui/card";
+import { prisma } from "@/lib/prisma";
 
-export default function Home() {
+export const metadata = {
+  title: "Calls for Papers",
+  description:
+    "Browse active Jigjiga University calls for papers, review submission requirements, and submit your research.",
+};
+
+export default async function HomePage() {
+  await connection();
+  const now = new Date();
+  const calls = await prisma.researchCall.findMany({
+    where: {
+      status: "OPEN",
+      opensAt: { lte: now },
+      closesAt: { gte: now },
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      topics: true,
+      requirements: true,
+      closesAt: true,
+    },
+    orderBy: { closesAt: "asc" },
+  });
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="shell content-page calls-page">
+      <section className="calls-heading" aria-labelledby="page-title">
+        <div>
+          <p className="eyebrow">Jigjiga University · Research Call & Peer Review</p>
+          <h1 id="page-title">Calls for Papers</h1>
+          <p>
+            Official research opportunities from Jigjiga University. Find a call
+            that fits your work, review its requirements, and submit before the
+            deadline.
           </p>
+          <div className="calls-heading-actions">
+            <a href="#open-calls" className="button button-primary">
+              Explore open calls <span aria-hidden="true">↓</span>
+            </a>
+            <Link href="/sign-in" className="text-link">
+              Already submitted? Track your work
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <aside className="submission-guide" aria-label="How to submit">
+          <p className="submission-guide-title">From call to submission</p>
+          <ol>
+            <li><span>01</span><div><strong>Choose a call</strong><small>Check its topics and eligibility.</small></div></li>
+            <li><span>02</span><div><strong>Prepare your materials</strong><small>Follow the listed format and requirements.</small></div></li>
+            <li><span>03</span><div><strong>Submit before closing</strong><small>Sign in to submit and keep your reference.</small></div></li>
+          </ol>
+        </aside>
+      </section>
+
+      <section className="calls-section" id="open-calls" aria-labelledby="open-calls-heading">
+        <div className="calls-section-heading">
+          <div>
+            <p className="eyebrow">Currently accepting submissions</p>
+            <h2 id="open-calls-heading">Open calls</h2>
+          </div>
+          <span className="calls-count" aria-live="polite">
+            {calls.length} {calls.length === 1 ? "open call" : "open calls"}
+          </span>
         </div>
-      </main>
-    </div>
+
+        {calls.length ? (
+          <CallExplorer calls={calls.map((call) => ({ ...call, closesAt: call.closesAt.toISOString() }))} />
+        ) : (
+          <Card className="empty-state calls-empty-state">
+            <p className="eyebrow">No open calls</p>
+            <h2>There are no calls accepting submissions right now.</h2>
+            <p>
+              New opportunities appear here during their published submission
+              period. If you have already submitted, you can still sign in to
+              check your submission status.
+            </p>
+            <Link href="/sign-in" className="button button-secondary">
+              Sign in to track a submission
+            </Link>
+          </Card>
+        )}
+      </section>
+
+      {calls.length > 0 && (
+        <p className="calls-footer-note">
+          Call details include the submission requirements, accepted file types,
+          and review criteria. <span>Read them before you begin.</span>
+        </p>
+      )}
+    </main>
   );
 }

@@ -1,0 +1,5 @@
+import Link from "next/link";
+import { PageIntro } from "@/components/site/page-intro";
+import { SignInForm } from "@/components/auth/sign-in-form";
+export const metadata = { title: "Sign in" };
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string | string[] }> }) { const query = await searchParams; const callbackUrl = typeof query.callbackUrl === "string" ? query.callbackUrl : ""; return <main className="shell content-page auth-page"><PageIntro eyebrow="Secure access" title="Sign in to JJU-RCPR">Access your research record, review assignments, or coordinator workspace.</PageIntro><section className="form-shell auth-shell"><SignInForm callbackUrl={callbackUrl} /><p className="auth-note"><Link href="/forgot-password">Forgot your password?</Link> · <Link href="/resend-verification">Resend email verification</Link></p><p className="auth-note">New guest researcher? <Link href="/register">Create an account</Link></p></section></main>; }
