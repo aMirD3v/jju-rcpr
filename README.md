@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Jigjiga University Research Call & Peer Review System
 
-## Getting Started
+**JJU-RCPR** is a standalone university application for publishing research calls, receiving submissions, screening proposals, assigning reviewers, collecting peer reviews, recording coordinator decisions, managing revisions, and notifying researchers. It is independent of the JJU Research Repository.
 
-First, run the development server:
+## Start locally
+
+1. Install dependencies and create a local environment file only if one does not already exist: `npm install && cp -n .env.example .env`.
+2. Configure PostgreSQL, `AUTH_SECRET`, `NEXTAUTH_URL`, and either local MinIO or Cloudflare R2. Email delivery is optional.
+3. Apply the existing migrations with `npm run db:deploy` and generate the Prisma client with `npm run db:generate`.
+4. Provision the first system administrator using `npm run provision:admin` with the one-time `INITIAL_ADMIN_*` values set in `.env`.
+5. Run `npm run dev` and open `http://localhost:3000`.
+
+See [docs/setup.md](docs/setup.md) for the full infrastructure and deployment steps and [docs/architecture.md](docs/architecture.md) for workflow and access boundaries.
+
+## Main areas
+
+- Public open-call directory, search, call details, registration, and secure submission.
+- Researcher portal with private history, decisions, notifications, and revision uploads.
+- Coordinator workspace with separate overview, call management, all-submissions, screening, reviewer-assignment, and final-decision pages.
+- Separate administrator area for staff and researcher accounts, access recovery, activation controls, and read-only audit review. Coordinators do not administer accounts.
+- Reviewer workspace for active assignments, conflict declaration, saved review drafts, structured scoring, and submitted recommendations.
+- Administrator-managed researcher identity verification and audited access recovery when a researcher cannot use their registered email.
+
+If email delivery is not configured, account verification and recovery are handled by an administrator. Administrators can verify researcher accounts and, after confirming identity under university policy, issue a one-time temporary password. The password is not emailed, is displayed once, and must be changed at first sign-in.
+
+## Verification commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npx tsc --noEmit
+npm run build
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# jju-rcpr
