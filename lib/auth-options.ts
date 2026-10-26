@@ -3,7 +3,11 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import type { OAuthConfig } from "next-auth/providers/oauth";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { verifyPassword } from "@/lib/password";
+import {
+  clearFailedLogins,
+  recordFailedLogin,
+  verifyCredentials,
+} from "@/lib/credentials";
 
 const providers: NextAuthOptions["providers"] = [CredentialsProvider({
     name: "University account",
@@ -11,26 +15,20 @@ const providers: NextAuthOptions["providers"] = [CredentialsProvider({
     async authorize(credentials) {
       const parsed = z.object({ email: z.string().email().max(254), password: z.string().min(1).max(200), totpCode: z.string().optional() }).safeParse(credentials);
       if (!parsed.success) return null;
-      const user = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
-      if (!user?.passwordHash || !user.emailVerifiedAt || !user.isActive) return null;
-      if (user.lockoutUntil && user.lockoutUntil > new Date()) return null;
-      if (!(await verifyPassword(parsed.data.password, user.passwordHash))) {
-        const failedLoginAttempts = user.failedLoginAttempts + 1;
-        await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts, lockoutUntil: failedLoginAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null } });
-        return null;
-      }
+      const result = await verifyCredentials(parsed.data.email, parsed.data.password);
+      if (result.status !== "VALID") return null;
+      const user = result.user;
       if (user.mfaEnabled) {
         const { verifyTotp, consumeRecoveryCode } = await import("@/lib/mfa");
         const code = parsed.data.totpCode ?? "";
         let valid = false;
         try { valid = user.mfaSecretEncrypted ? verifyTotp(user.mfaSecretEncrypted, code) : false; } catch { return null; }
         if (!valid && !(await consumeRecoveryCode(user.id, code))) {
-          const failedLoginAttempts = user.failedLoginAttempts + 1;
-          await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts, lockoutUntil: failedLoginAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null } });
+          await recordFailedLogin(user.id, user.failedLoginAttempts);
           return null;
         }
       }
-      if (user.failedLoginAttempts || user.lockoutUntil) await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts: 0, lockoutUntil: null } });
+      if (user.failedLoginAttempts || user.lockoutUntil) await clearFailedLogins(user.id);
       return { id: user.id, email: user.email, name: user.name, role: user.role, institution: user.institution, passwordResetRequired: user.passwordResetRequired, sessionVersion: user.sessionVersion };
     },
   })];

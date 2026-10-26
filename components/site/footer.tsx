@@ -33,7 +33,7 @@ export function Footer() {
       </div>
       <div className="shell footer-bottom">
         <span>© Jigjiga University</span>
-        <span>JJU-RCPR · Research Call &amp; Peer Review System</span>
+        <span>JJU · Research Call &amp; Peer Review System</span>
       </div>
     </footer>
   );

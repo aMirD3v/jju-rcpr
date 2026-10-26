@@ -10,14 +10,13 @@
 4. Provision the first system administrator using `npm run provision:admin` with the one-time `INITIAL_ADMIN_*` values set in `.env`.
 5. Run `npm run dev` and open `http://localhost:3000`.
 
-See [docs/setup.md](docs/setup.md) for the full infrastructure and deployment steps and [docs/architecture.md](docs/architecture.md) for workflow and access boundaries.
 
 ## Main areas
 
 - Public open-call directory, search, call details, registration, and secure submission.
 - Researcher portal with private history, decisions, notifications, and revision uploads.
 - Coordinator workspace with separate overview, call management, all-submissions, screening, reviewer-assignment, and final-decision pages.
-- Separate administrator area for staff and researcher accounts, access recovery, activation controls, and read-only audit review. Coordinators do not administer accounts.
+- Administrator area for programme oversight, call lifecycle and deadline intervention, reviewer deadline and reminder controls, decision reopening, staff and researcher accounts, access recovery, activation controls, and audited review. Coordinators do not administer accounts.
 - Reviewer workspace for active assignments, conflict declaration, saved review drafts, structured scoring, and submitted recommendations.
 - Scheduled calls visible before opening, with submission actions enabled only during the call window and call-specific required document checklists.
 - Reviewer expertise and configurable active workload limits used by coordinator assignment tools and enforced on the server.

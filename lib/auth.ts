@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { connection } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +8,7 @@ import type { Role } from "@prisma/client";
 export type SessionActor = { id: string; role: Role; name?: string | null; email?: string | null; passwordResetRequired?: boolean; institution?: string | null };
 
 async function readActor(): Promise<SessionActor | null> {
+  await connection();
   const session = await getServerSession(authOptions);
   const user = session?.user as { id?: string; role?: Role; sessionVersion?: number; passwordResetRequired?: boolean; institution?: string | null; name?: string | null; email?: string | null } | undefined;
   if (!user?.id || !user.role) return null;

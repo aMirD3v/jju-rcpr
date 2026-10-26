@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  Activity,
   BookOpen,
   ClipboardCheck,
   FileText,
+  Gavel,
   History,
   LayoutDashboard,
   ListChecks,
@@ -60,7 +62,7 @@ export function WorkspaceSidebar({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const links =
+  const roleLinks =
     role === "ADMIN"
       ? [
           {
@@ -69,6 +71,10 @@ export function WorkspaceSidebar({
             icon: LayoutDashboard,
             exact: true,
           },
+          { href: "/admin/oversight", label: "Oversight", icon: Activity },
+          { href: "/admin/calls", label: "Calls", icon: BookOpen },
+          { href: "/admin/reviews", label: "Reviews", icon: ClipboardCheck },
+          { href: "/admin/decisions", label: "Decisions", icon: Gavel },
           { href: "/admin/accounts", label: "Accounts", icon: Users },
           { href: "/admin/audit-logs", label: "Audit log", icon: ShieldCheck },
         ]
@@ -113,11 +119,14 @@ export function WorkspaceSidebar({
               },
               { href: "/", label: "Browse calls", icon: BookOpen },
             ];
-  links.push({
-    href: "/account/security",
-    label: "Account security",
-    icon: KeyRound,
-  });
+  const links = [
+    ...roleLinks,
+    {
+      href: "/account/security",
+      label: "Account security",
+      icon: KeyRound,
+    },
+  ];
 
   return (
     <aside className="workspace-sidebar">

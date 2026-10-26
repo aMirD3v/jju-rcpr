@@ -20,6 +20,7 @@ async function SessionHeader() {
 }
 
 async function SessionFooter() {
+  await connection();
   const actor = await getPasswordChangeActor();
   return actor ? null : <Footer />;
 }
