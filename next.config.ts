@@ -5,9 +5,6 @@ const nextConfig: NextConfig = {
   experimental: {
     agentFeedback: true,
   },
-    eslint: {
-    ignoreDuringBuilds: true,
-  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
