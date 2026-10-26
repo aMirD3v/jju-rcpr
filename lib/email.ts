@@ -6,15 +6,28 @@ function siteUrl() {
 }
 
 export async function sendMail(to: string, subject: string, html: string) {
-  if (!process.env.RESEND_API_KEY) return false;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("Email not sent: RESEND_API_KEY is not configured for this deployment.");
+    return false;
+  }
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
+      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({ from: process.env.EMAIL_FROM || "JJU-RCPR <noreply@jju.edu.et>", to, subject, html }),
+      signal: AbortSignal.timeout(10_000),
     });
-    return response.ok;
-  } catch {
+    if (response.ok) return true;
+    const providerError = await response.json().catch(() => null) as { name?: unknown; code?: unknown; message?: unknown } | null;
+    const code = typeof providerError?.name === "string" ? providerError.name : typeof providerError?.code === "string" ? providerError.code : "provider_rejected";
+    const message = typeof providerError?.message === "string"
+      ? providerError.message.replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[email]").replace(/\bre_[A-Za-z0-9]+\b/g, "[redacted]").slice(0, 300)
+      : undefined;
+    console.error("Resend rejected an email request", { status: response.status, code, message });
+    return false;
+  } catch (error) {
+    console.error("Resend email request failed", { name: error instanceof Error ? error.name : "unknown" });
     return false;
   }
 }
