@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
@@ -14,12 +15,14 @@ async function readActor(): Promise<SessionActor | null> {
   return current;
 }
 
+const getRequestActor = cache(readActor);
+
 export async function getActor(): Promise<SessionActor | null> {
-  const actor = await readActor();
+  const actor = await getRequestActor();
   return actor?.passwordResetRequired ? null : actor;
 }
 
-export const getPasswordChangeActor = readActor;
+export const getPasswordChangeActor = getRequestActor;
 
 export async function requireActor(...roles: Role[]) {
   const actor = await getActor();

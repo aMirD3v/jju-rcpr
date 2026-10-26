@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { getPasswordChangeActor } from "@/lib/auth";
@@ -12,15 +13,28 @@ export const metadata: Metadata = {
   },
   description: "Jigjiga University Research Call & Peer Review System.",
 };
-export default async function RootLayout({ children }: LayoutProps<"/">) {
+async function SessionHeader() {
   await connection();
   const actor = await getPasswordChangeActor();
+  return <Header actor={actor} />;
+}
+
+async function SessionFooter() {
+  const actor = await getPasswordChangeActor();
+  return actor ? null : <Footer />;
+}
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
       <body>
-        <Header actor={actor} />
+        <Suspense fallback={<Header actor={null} />}>
+          <SessionHeader />
+        </Suspense>
         {children}
-        {!actor && <Footer />}
+        <Suspense fallback={null}>
+          <SessionFooter />
+        </Suspense>
       </body>
     </html>
   );

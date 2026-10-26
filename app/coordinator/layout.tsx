@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { WorkspaceFrame } from "@/components/site/workspace-frame";
+import { WorkspaceLoading } from "@/components/site/workspace-loading";
 
 export default function CoordinatorLayout({ children }: LayoutProps<"/coordinator">) {
-  return <WorkspaceFrame role="COORDINATOR">{children}</WorkspaceFrame>;
+  return <Suspense fallback={<WorkspaceLoading />}><WorkspaceFrame role="COORDINATOR">{children}</WorkspaceFrame></Suspense>;
 }

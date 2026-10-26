@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { CallExplorer } from "@/components/calls/call-explorer";
 import { Card } from "@/components/ui/card";
@@ -10,7 +11,15 @@ export const metadata = {
     "Browse active Jigjiga University calls for papers, review submission requirements, and submit your research.",
 };
 
-export default async function HomePage() {
+function CallsLoading() {
+  return <main className="shell content-page calls-page"><section className="calls-heading"><div><p className="eyebrow">Jigjiga University · Research Call &amp; Peer Review</p><h1>Calls for Papers</h1><p>Loading published research opportunities…</p></div></section></main>;
+}
+
+export default function HomePage() {
+  return <Suspense fallback={<CallsLoading />}><CallsDirectory /></Suspense>;
+}
+
+async function CallsDirectory() {
   await connection();
   const now = new Date();
   const publishedCalls = await prisma.researchCall.findMany({

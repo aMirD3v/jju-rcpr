@@ -1,10 +1,15 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { PageIntro } from "@/components/site/page-intro";
 import { SubmissionForm } from "@/components/forms/submission-form";
 import { WorkspaceFrame } from "@/components/site/workspace-frame";
 import { getActor } from "@/lib/auth";
+import { PageLoading } from "@/components/site/page-loading";
 export const metadata = { title: "Submit research" };
-export default async function SubmitPage({ searchParams }: { searchParams: Promise<{ call?: string | string[] }> }) {
+export default function SubmitPage(props: { searchParams: Promise<{ call?: string | string[] }> }) {
+  return <Suspense fallback={<PageLoading label="Preparing your submission workspace…" />}><SubmitPageContent {...props} /></Suspense>;
+}
+async function SubmitPageContent({ searchParams }: { searchParams: Promise<{ call?: string | string[] }> }) {
   const query = await searchParams;
   const initialCallId = typeof query.call === "string" ? query.call : "";
   const actor = await getActor();

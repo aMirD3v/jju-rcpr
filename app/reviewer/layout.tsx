@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { WorkspaceFrame } from "@/components/site/workspace-frame";
+import { WorkspaceLoading } from "@/components/site/workspace-loading";
 
 export default function ReviewerLayout({ children }: LayoutProps<"/reviewer">) {
-  return <WorkspaceFrame role="REVIEWER">{children}</WorkspaceFrame>;
+  return <Suspense fallback={<WorkspaceLoading />}><WorkspaceFrame role="REVIEWER">{children}</WorkspaceFrame></Suspense>;
 }
