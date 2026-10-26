@@ -1454,8 +1454,28 @@ fieldset:disabled {
 .required-document-fields legend { padding: 0 7px; font-weight: 600; }
 .required-document-fields label { display: grid; gap: 6px; }
 .required-document-fields small { display: block; color: var(--muted); }
+.mfa-setup {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f9fafb;
+}
+.mfa-qr { display: grid; place-items: center; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; }
+.mfa-qr svg { display: block; }
+.mfa-setup-copy h3 { margin: 0 0 6px; font: 400 20px/1.2 Georgia, serif; }
+.mfa-setup-copy p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.mfa-setup-copy label { margin-top: 18px; }
 .recovery-codes { margin: 18px 0; padding: 16px; background: var(--surface-muted, #f4f3ef); border: 1px solid var(--line); border-radius: 8px; }
 .recovery-codes pre { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 20px; white-space: pre-wrap; font: 600 .95rem/1.5 ui-monospace, monospace; }
+@media (max-width: 620px) {
+  .mfa-setup { grid-template-columns: 1fr; justify-items: center; padding: 16px; }
+  .mfa-setup-copy { justify-self: stretch; }
+}
 .sso-signin { display: grid; justify-items: center; gap: 12px; margin-top: 18px; }
 .sso-signin > span { color: var(--muted); font-size: .85rem; }
 .reviewer-profile-form { display: grid; grid-template-columns: 1fr 190px auto; align-items: end; gap: 12px; padding: 14px 0; }
